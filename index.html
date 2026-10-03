@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Plan Lector Conexiones Humanas</title>
+<meta name="description" content="Lista de compra compartida del plan lector: tacha los libros comprados para que nadie los compre dos veces.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232343C9'/%3E%3Cpath d='M9 16.5l4.5 4.5L23 11' fill='none' stroke='%23fff' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600..800&display=swap">
+<style>
+body{margin:0}
+[hidden]{display:none!important}
+img{max-width:100%}
+
+/* Layout: hoja de pedido en una sola columna. Arriba el avance de la compra, luego una barra fija
+   de búsqueda y filtros, y debajo una lista continua de renglones numerados que se tachan. */
+:root{
+  --bg:#F2F4F9; --surface:#FFFFFF; --ink:#14203B; --muted:#56617C; --line:#DAE0EC; --line-strong:#B4BED3;
+  --accent:#2343C9; --on-accent:#FFFFFF; --accent-soft:#E6EBFD;
+  --ok:#17693F; --ok-soft:#DDF2E5;
+  --hold:#7A5300; --hold-soft:#FFEFBF;
+  --warn:#A8391B; --warn-soft:#FCE5DC;
+  --display:"Bricolage Grotesque","Trebuchet MS","Segoe UI",system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible","Segoe UI",system-ui,-apple-system,sans-serif;
+  --radius:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1220; --surface:#161D2F; --ink:#E9EDF7; --muted:#9BA6C0; --line:#28314B; --line-strong:#46527A;
+    --accent:#93A8FF; --on-accent:#0D1220; --accent-soft:#1E2850;
+    --ok:#7FD9A7; --ok-soft:#123222;
+    --hold:#F3D577; --hold-soft:#3A2F0E;
+    --warn:#FFAF96; --warn-soft:#3E1A10;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D1220; --surface:#161D2F; --ink:#E9EDF7; --muted:#9BA6C0; --line:#28314B; --line-strong:#46527A;
+  --accent:#93A8FF; --on-accent:#0D1220; --accent-soft:#1E2850;
+  --ok:#7FD9A7; --ok-soft:#123222;
+  --hold:#F3D577; --hold-soft:#3A2F0E;
+  --warn:#FFAF96; --warn-soft:#3E1A10;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45}
+.wrap{max-width:880px;margin:0 auto;padding-inline:16px;padding-block:28px 56px;display:flex;flex-direction:column;gap:18px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Cabecera */
+.top{display:flex;flex-direction:column;gap:8px}
+.eyebrow{margin:0;font-size:.78rem;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);font-weight:700}
+h1{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(1.7rem,5.2vw,2.5rem);line-height:1.05;letter-spacing:-.015em;text-wrap:balance}
+.lede{margin:0;color:var(--muted);max-width:62ch}
+.yo{margin:0;font-size:.9rem;color:var(--muted)}
+.yo strong{color:var(--ink)}
+
+/* Avance */
+.avance{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.cifra{margin:0;font-family:var(--display);font-weight:700;font-size:1.25rem;font-variant-numeric:tabular-nums}
+.cifra b{font-size:1.9rem;font-weight:800;color:var(--ok)}
+.track{display:flex;height:12px;border-radius:99px;overflow:hidden;background:var(--line)}
+.seg{display:block;height:100%;transition:width .35s ease}
+.seg.ok{background:var(--ok)}
+.seg.hold{background:var(--hold)}
+.leyenda{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0;padding:0;list-style:none;font-size:.9rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.leyenda li{display:flex;align-items:center;gap:7px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--line-strong);flex:none}
+.dot.ok{background:var(--ok)} .dot.hold{background:var(--hold)}
+
+/* Avisos */
+.aviso{border-radius:var(--radius);padding:12px 16px;background:var(--accent-soft);color:var(--ink);border:1px solid var(--line)}
+.aviso.alerta{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.aviso p{margin:0}
+
+/* Barra de búsqueda y filtros */
+.barra{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:10px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--line)}
+#buscar{-webkit-appearance:none;appearance:none;width:100%;font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line-strong);border-radius:10px;padding:11px 14px;min-height:46px}
+#buscar::placeholder{color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:inherit;font-size:.9rem;cursor:pointer;color:var(--ink);background:var(--surface);border:1px solid var(--line-strong);border-radius:99px;padding:7px 13px;min-height:38px;display:inline-flex;align-items:center;gap:7px;font-variant-numeric:tabular-nums}
+.chip span{color:var(--muted);font-size:.85em}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip[aria-pressed="true"] span{color:inherit;opacity:.75}
+
+/* Lista */
+.lista{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.fila{display:grid;grid-template-columns:2.4em minmax(0,1fr) auto;gap:10px 14px;align-items:start;padding:15px 16px;border-top:1px solid var(--line)}
+.fila:first-child{border-top:0}
+.num{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.9rem;text-align:right;padding-top:3px}
+.cuerpo{min-width:0;display:flex;flex-direction:column;gap:4px}
+.titulo{margin:0;font-family:var(--display);font-weight:700;font-size:1.08rem;line-height:1.2;overflow-wrap:anywhere}
+.meta{margin:0;color:var(--muted);font-size:.92rem;overflow-wrap:anywhere}
+.notas{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.nota{font-size:.85rem;border-radius:8px;padding:4px 9px;background:var(--accent-soft);color:var(--ink)}
+.nota.ok{background:var(--ok-soft);color:var(--ok)}
+.nota.hold{background:var(--hold-soft);color:var(--hold)}
+.nota.warn{background:var(--warn-soft);color:var(--warn);font-weight:700}
+.nota.tenue{background:transparent;color:var(--muted);padding-inline:0}
+.fila.comprado .titulo{text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:var(--ok);color:var(--muted)}
+.fila.comprado .meta{opacity:.8}
+.fila.apartado{background:linear-gradient(90deg,var(--hold-soft) 0,var(--hold-soft) 5px,transparent 5px)}
+.fila.comprado{background:linear-gradient(90deg,var(--ok-soft) 0,var(--ok-soft) 5px,transparent 5px)}
+.acciones{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.btn{font:inherit;font-size:.92rem;font-weight:700;cursor:pointer;border-radius:10px;padding:8px 13px;min-height:40px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink)}
+.btn.primario{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.btn.suave{font-weight:400;color:var(--muted)}
+.btn:disabled{opacity:.55;cursor:default}
+.btn,.chip{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.confirma{grid-column:2 / -1;background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.confirma p{margin:0;font-weight:700}
+.confirma .acciones{justify-content:flex-start}
+.vacio{padding:34px 18px;text-align:center;color:var(--muted)}
+.vacio strong{display:block;color:var(--ink);font-family:var(--display);font-size:1.1rem;margin-bottom:4px}
+
+/* Pie */
+.pie{display:flex;flex-direction:column;gap:10px;color:var(--muted);font-size:.92rem}
+.pie .fila-pie{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.pie p{margin:0;max-width:62ch}
+.movil{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;display:flex;flex-wrap:wrap;gap:16px 20px;align-items:center;color:var(--ink)}
+.movil canvas{width:148px;height:148px;max-width:100%;border-radius:8px;flex:none;image-rendering:pixelated}
+.movil .txt{flex:1 1 240px;min-width:0;display:flex;flex-direction:column;gap:8px}
+.movil h2{margin:0;font-family:var(--display);font-weight:700;font-size:1.1rem;line-height:1.2}
+.movil p{color:var(--muted)}
+.movil code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.85rem;color:var(--ink);background:var(--accent-soft);border-radius:8px;padding:8px 10px;overflow-wrap:anywhere;user-select:all;-webkit-user-select:all}
+#copia{width:100%;min-height:150px;font:inherit;font-size:.9rem;color:var(--ink);background:var(--surface);border:1px solid var(--line-strong);border-radius:10px;padding:10px}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));max-width:min(560px,calc(100% - 32px));background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:12px;font-weight:700;z-index:20;box-shadow:0 8px 28px rgb(0 0 0 / .25)}
+
+@media (max-width:640px){
+  .wrap{padding-block:18px 96px;gap:14px}
+  .lede{font-size:.95rem}
+  .avance{padding:14px}
+  .barra{padding-block:8px;gap:8px}
+  /* Filtros en una sola fila deslizable, para que la barra fija no tape la lista. */
+  .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:-16px;padding-inline:16px;-webkit-overflow-scrolling:touch}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:none;min-height:44px}
+  .fila{grid-template-columns:2em minmax(0,1fr);padding-inline:12px}
+  .fila > .acciones{grid-column:1 / -1;justify-content:stretch}
+  .fila > .acciones .btn{flex:1 1 0;min-height:48px;padding-inline:8px}
+  .fila.comprado > .acciones .btn{flex:none;min-height:44px;margin-left:auto}
+  .confirma{grid-column:1 / -1}
+  .confirma .btn{flex:1 1 auto;min-height:48px}
+  .pie .btn{min-height:46px}
+  .movil{padding:14px}
+  .toast{left:16px;right:16px;transform:none;max-width:none;text-align:center}
+}
+@media (prefers-reduced-motion:reduce){ .seg{transition:none} }
+
+/* Nombre de quien marca */
+.soy{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 18px}
+.soy form{display:flex;flex-direction:column;gap:8px}
+.soy label{font-weight:700}
+#nombre{-webkit-appearance:none;appearance:none;flex:1 1 220px;min-width:0;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line-strong);border-radius:10px;padding:10px 14px;min-height:46px}
+.soy .fila-pie{display:flex;flex-wrap:wrap;gap:10px}
+.enlace{font:inherit;color:var(--accent);background:none;border:0;padding:6px 2px;text-decoration:underline;cursor:pointer}
+.vivo{display:inline-flex;align-items:center;gap:7px;font-size:.85rem;color:var(--muted)}
+.vivo .dot{background:var(--line-strong)} .vivo.on .dot{background:var(--ok)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Lista de compra compartida</p>
+    <h1>Plan Lector Conexiones Humanas</h1>
+    <p class="lede">Revisa aquí antes de comprar. Cuando compres un libro, táchalo: el cambio aparece al instante para todo el equipo y nadie lo compra dos veces.</p>
+  </header>
+
+  <section class="soy" aria-label="Tu nombre">
+    <form id="formNombre" autocomplete="on">
+      <label for="nombre">Escribe tu nombre para poder marcar libros. El equipo verá quién compró cada uno.</label>
+      <div class="fila-pie">
+        <input id="nombre" type="text" maxlength="60" autocomplete="name" placeholder="Nombre y apellido">
+        <button class="btn primario" type="submit">Guardar nombre</button>
+      </div>
+    </form>
+    <p class="yo" id="yo" hidden>Tus marcas quedan a nombre de <strong id="yoNombre"></strong>. <button class="enlace" id="cambiarNombre" type="button">Cambiar</button></p>
+  </section>
+
+  <section class="avance" aria-label="Avance de la compra">
+    <p class="cifra"><b id="nComprados">0</b> de <span id="nTotal">0</span> libros comprados</p>
+    <div class="track" id="track" role="img" aria-label="Avance de la compra">
+      <span class="seg ok" id="segOk" style="width:0%"></span><span class="seg hold" id="segHold" style="width:0%"></span>
+    </div>
+    <ul class="leyenda">
+      <li><span class="dot ok"></span><span id="lyOk">0 comprados</span></li>
+      <li><span class="dot hold"></span><span id="lyHold">0 apartados</span></li>
+      <li><span class="dot"></span><span id="lyPend">0 por comprar</span></li>
+      <li class="vivo" id="vivo"><span class="dot"></span><span id="vivoTxt">Conectando…</span></li>
+    </ul>
+  </section>
+
+  <div class="aviso" id="aviso" hidden><p id="avisoTxt"></p></div>
+
+  <div class="barra">
+    <label class="sr" for="buscar">Buscar libro</label>
+    <input id="buscar" type="search" placeholder="Buscar título, autor o género" autocomplete="off">
+    <div class="chips" id="chips" role="group" aria-label="Filtrar por estado"></div>
+  </div>
+
+  <ol class="lista" id="lista"></ol>
+
+  <footer class="pie">
+    <div class="fila-pie">
+      <button class="btn" id="btnCopiar" type="button">Copiar lista por comprar</button>
+      <span id="copiaMsg" role="status"></span>
+    </div>
+    <textarea id="copia" readonly hidden aria-label="Lista por comprar en texto"></textarea>
+    <p><strong>Lo voy a comprar</strong> aparta el libro a tu nombre mientras haces la compra. <strong>Ya lo compré</strong> lo tacha para todos. Cada marca guarda quién la hizo y cuándo.</p>
+    <section class="movil" id="movil" aria-labelledby="movilT" hidden>
+      <canvas id="qr" width="164" height="164" role="img" aria-label="Código QR con el enlace de esta lista" hidden></canvas>
+      <div class="txt">
+        <h2 id="movilT">Abrir en el celular, Android o iPhone</h2>
+        <p>Escanea el código con la cámara, o copia el enlace y envíalo por WhatsApp o correo. Se abre en el navegador del teléfono, sin cuenta ni contraseña.</p>
+        <code id="enlace"></code>
+        <div class="fila-pie">
+          <button class="btn" id="btnEnlace" type="button">Copiar enlace</button>
+          <span id="enlaceMsg" role="status"></span>
+        </div>
+        <p>Para tenerla a un toque, abre el enlace en el navegador del teléfono y elige «Agregar a pantalla de inicio» en su menú.</p>
+      </div>
+    </section>
+  </footer>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script>
+(function(){
+'use strict';
+/* ===================== CONFIGURACIÓN: pega aquí los dos datos de Supabase =====================
+   Están en el panel de Supabase, en Project Settings > API (o en el botón «Connect»).
+   La clave «anon» o «publishable» es pública por diseño: puede ir en la página sin riesgo,
+   porque la base de datos solo permite leer la lista y cambiar el estado de un libro.        */
+var SUPABASE_URL = 'https://odcwjmzlfqnwjzwqqfst.supabase.co';        // ejemplo: https://abcdefgh.supabase.co
+var SUPABASE_ANON_KEY = 'sb_publishable_Pb99pwEaPh-1pajmeiepog_07Mvrai4';         // clave «anon» o «publishable»
+/* =============================================================================================== */
+var TABLA = 'plan_lector_libros';
+var URL_APP = location.protocol.indexOf('http') === 0 ? location.origin + location.pathname : '';
+var configurado = SUPABASE_URL.indexOf('http') === 0 && SUPABASE_ANON_KEY.indexOf('PEGA_AQUI') < 0;
+var cliente = null, enVivo = false;
+var $ = function(id){ return document.getElementById(id); };
+var S = { fase:'cargando', libros:[], filtro:'todos', q:'', confirma:null, ocupados:{}, nombre:'', sinConexion:false };
+var fmt = new Intl.DateTimeFormat('es-EC', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
+var ultimaHuella = '', marca = 0, enCurso = false, ultimoUso = Date.now(), ultimaCarga = 0;
+
+try { var f0 = localStorage.getItem('pl-filtro'); if (f0) S.filtro = f0; var n0 = localStorage.getItem('pl-nombre'); if (n0) S.nombre = n0; } catch(e){}
+
+function norm(s){ return String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim(); }
+function fecha(iso){ var d = new Date(iso); return isNaN(d) ? '' : fmt.format(d); }
+function el(tag, cls, txt){ var n = document.createElement(tag); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; }
+function esMio(por){ return !!S.nombre && !!por && norm(por) === norm(S.nombre); }
+function porId(id){ for (var i = 0; i < S.libros.length; i++) if (S.libros[i].id === id) return S.libros[i]; return null; }
+function hayOcupados(){ for (var k in S.ocupados) if (S.ocupados[k]) return true; return false; }
+
+function gemelos(){
+  var g = {}, out = {};
+  S.libros.forEach(function(l){ var k = norm(l.titulo); (g[k] = g[k] || []).push(l); });
+  Object.keys(g).forEach(function(k){ if (g[k].length > 1) g[k].forEach(function(l){ out[l.id] = g[k].filter(function(x){ return x.id !== l.id; }); }); });
+  return out;
+}
+function quien(por){ return el('span', 'quien', !por ? 'alguien del equipo' : esMio(por) ? 'ti' : por); }
+
+var toastT = null;
+function toast(msg){ var t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(function(){ t.hidden = true; }, 5200); }
+
+function coincide(l, q){
+  if (S.filtro === 'pendiente' && l.estado !== 'pendiente') return false;
+  if (S.filtro === 'apartado' && l.estado !== 'apartado') return false;
+  if (S.filtro === 'comprado' && l.estado !== 'comprado') return false;
+  if (S.filtro === 'mios' && !(l.estado !== 'pendiente' && esMio(l.por))) return false;
+  if (q && norm([l.n, l.titulo, l.autor, l.genero, l.edad].join(' ')).indexOf(q) < 0) return false;
+  return true;
+}
+function boton(txt, cls, id, acc, ocupado){
+  var b = el('button', 'btn ' + (cls || ''), txt);
+  b.type = 'button'; b.dataset.id = id; b.dataset.acc = acc; b.dataset.key = id + ':' + acc;
+  if (ocupado) b.disabled = true;
+  return b;
+}
+
+function fila(l, gem){
+  var ocupado = !!S.ocupados[l.id];
+  var li = el('li', 'fila ' + l.estado);
+  li.appendChild(el('span', 'num', String(l.n || '')));
+  var c = el('div', 'cuerpo');
+  c.appendChild(el('p', 'titulo', l.titulo));
+  c.appendChild(el('p', 'meta', [l.autor, l.genero, l.edad || 'Sin edad indicada'].filter(Boolean).join(' · ')));
+  var notas = el('div', 'notas'), cuando = l.cuando ? fecha(l.cuando) : '';
+  function conFecha(n){ if (cuando) n.appendChild(document.createTextNode(' · ' + cuando)); return n; }
+  if (l.estado === 'comprado') { var n1 = el('span', 'nota ok', 'Comprado por '); n1.appendChild(quien(l.por)); notas.appendChild(conFecha(n1)); }
+  else if (l.estado === 'apartado') {
+    var n2 = el('span', 'nota hold', esMio(l.por) ? 'Lo apartaste tú' : 'Apartado por ');
+    if (!esMio(l.por)) n2.appendChild(quien(l.por));
+    notas.appendChild(conFecha(n2));
+  } else if (l.cuando && l.por) { var n3 = el('span', 'nota tenue', 'Devuelto a la lista por '); n3.appendChild(quien(l.por)); notas.appendChild(conFecha(n3)); }
+  var otros = gem[l.id];
+  if (otros) {
+    var comprados = otros.filter(function(o){ return o.estado === 'comprado'; });
+    var nums = function(a){ return a.map(function(o){ return 'n.º ' + o.n; }).join(' y '); };
+    if (comprados.length && l.estado !== 'comprado') notas.appendChild(el('span', 'nota warn', 'Este título ya se compró como ' + nums(comprados)));
+    else notas.appendChild(el('span', 'nota', 'Título repetido en la lista: también es el ' + nums(otros)));
+  }
+  if (notas.childNodes.length) c.appendChild(notas);
+  li.appendChild(c);
+
+  var conf = S.confirma && S.confirma.id === l.id ? S.confirma : null;
+  if (!conf) {
+    var a = el('div', 'acciones');
+    if (l.estado === 'pendiente') { a.appendChild(boton('Lo voy a comprar', '', l.id, 'apartado', ocupado)); a.appendChild(boton('Ya lo compré', 'primario', l.id, 'comprado', ocupado)); }
+    else if (l.estado === 'apartado') { a.appendChild(boton('Liberar', 'suave', l.id, 'pendiente', ocupado)); a.appendChild(boton('Ya lo compré', 'primario', l.id, 'comprado', ocupado)); }
+    else a.appendChild(boton('Desmarcar', 'suave', l.id, 'pendiente', ocupado));
+    li.appendChild(a);
+  } else {
+    var box = el('div', 'confirma'); box.setAttribute('role', 'group'); box.setAttribute('aria-label', 'Confirmar cambio');
+    var p = el('p');
+    if (conf.tipo === 'desmarcar') p.textContent = '¿Devolver este libro a la lista por comprar? Hazlo solo si la compra no se hizo.';
+    else if (conf.tipo === 'otro-comprar') { p.appendChild(document.createTextNode('Este libro lo apartó ')); p.appendChild(quien(l.por)); p.appendChild(document.createTextNode('. ¿Lo compraste tú?')); }
+    else if (conf.tipo === 'otro-liberar') { p.appendChild(document.createTextNode('Este libro lo apartó ')); p.appendChild(quien(l.por)); p.appendChild(document.createTextNode('. ¿Liberarlo para que otra persona lo compre?')); }
+    else p.textContent = 'Este título ya se compró en otro renglón de la lista. ¿Registrar también este ejemplar?';
+    box.appendChild(p);
+    var etiquetas = {'desmarcar':'Sí, devolver a la lista', 'otro-comprar':'Sí, lo compré yo', 'otro-liberar':'Sí, liberarlo', 'repetido':'Sí, registrar este también'};
+    var ba = el('div', 'acciones');
+    ba.appendChild(boton(etiquetas[conf.tipo], 'primario', l.id, 'si'));
+    ba.appendChild(boton('Cancelar', '', l.id, 'no'));
+    box.appendChild(ba); li.appendChild(box);
+  }
+  return li;
+}
+
+function render(){
+  var lista = $('lista'), aviso = $('aviso');
+  var activo = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.key : null;
+  var total = S.libros.length, nOk = 0, nHold = 0, nMios = 0;
+  S.libros.forEach(function(l){ if (l.estado === 'comprado') nOk++; else if (l.estado === 'apartado') nHold++; if (l.estado !== 'pendiente' && esMio(l.por)) nMios++; });
+  var nPend = total - nOk - nHold;
+  $('nComprados').textContent = nOk; $('nTotal').textContent = total;
+  $('segOk').style.width = (total ? nOk / total * 100 : 0) + '%';
+  $('segHold').style.width = (total ? nHold / total * 100 : 0) + '%';
+  $('track').setAttribute('aria-label', nOk + ' comprados, ' + nHold + ' apartados y ' + nPend + ' por comprar, de ' + total);
+  $('lyOk').textContent = nOk + (nOk === 1 ? ' comprado' : ' comprados');
+  $('lyHold').textContent = nHold + (nHold === 1 ? ' apartado' : ' apartados');
+  $('lyPend').textContent = nPend + ' por comprar';
+
+  $('formNombre').hidden = !!S.nombre; $('yo').hidden = !S.nombre; $('yoNombre').textContent = S.nombre;
+
+  var chips = $('chips'); chips.textContent = '';
+  [['todos','Todos',total],['pendiente','Por comprar',nPend],['apartado','Apartados',nHold],['comprado','Comprados',nOk],['mios','Los míos',nMios]].forEach(function(c){
+    if (c[0] === 'mios' && !S.nombre) return;
+    var b = el('button', 'chip', c[1] + ' '); b.type = 'button'; b.dataset.filtro = c[0]; b.dataset.key = 'chip:' + c[0];
+    b.setAttribute('aria-pressed', String(S.filtro === c[0])); b.appendChild(el('span', '', String(c[2]))); chips.appendChild(b);
+  });
+
+  aviso.hidden = !S.sinConexion; aviso.className = 'aviso alerta';
+  if (S.fase === 'config') { aviso.hidden = false; aviso.className = 'aviso'; }
+  $('avisoTxt').textContent = S.fase === 'config' ? 'Falta conectar la base de datos. Quien publique la página debe pegar la URL y la clave de Supabase al inicio del código de index.html (ver LEEME.txt).' : S.fase === 'lista' ? 'Sin conexión con la lista. Lo que ves puede estar desactualizado: no compres hasta que vuelva la conexión.' : 'No se pudo abrir la lista. Revisa tu conexión; la página lo intentará de nuevo en unos segundos.';
+
+  lista.textContent = '';
+  function vacio(t, d){ var v = el('li', 'vacio'); v.appendChild(el('strong', '', t)); v.appendChild(document.createTextNode(d)); lista.appendChild(v); }
+  if (S.fase === 'config') vacio('La lista aún no está conectada', 'Cuando se conecte la base de datos aparecerán aquí los libros del plan lector.');
+  else if (S.fase === 'cargando') vacio('Cargando la lista…', 'Aquí aparecerán los libros del plan lector con su estado de compra.');
+  else if (!total) vacio('Todavía no hay libros cargados', 'Cuando se carguen los títulos en la base de datos aparecerán aquí, listos para tachar.');
+  else {
+    var gem = gemelos(), q = norm(S.q), n = 0;
+    S.libros.forEach(function(l){ if (coincide(l, q)) { lista.appendChild(fila(l, gem)); n++; } });
+    if (!n) vacio('Ningún libro coincide', 'Prueba con otra palabra o cambia el filtro de estado.');
+  }
+  if (activo) { var again = document.querySelector('[data-key="' + activo + '"]'); if (again) again.focus({preventScroll:true}); }
+}
+
+function recibir(libros, forzar){
+  libros = (libros || []).slice().sort(function(a, b){ return (a.n - b.n) || (a.id - b.id); });
+  var huella = JSON.stringify(libros);
+  var cambio = huella !== ultimaHuella || S.fase !== 'lista' || S.sinConexion;
+  ultimaHuella = huella; S.libros = libros; S.fase = 'lista'; S.sinConexion = false;
+  if (S.confirma) { var l = porId(S.confirma.id), v = S.confirma.visto; if (!l || l.estado !== v.estado || l.por !== v.por) { S.confirma = null; cambio = true; } }
+  if (cambio || forzar) render();
+}
+function leer(){
+  return cliente.from(TABLA).select('id,n,titulo,autor,genero,edad,estado,por,cuando').order('n').order('id').then(function(r){
+    if (r.error) throw r.error;
+    return (r.data || []).map(function(x){ return { id:Number(x.id), n:Number(x.n) || 0, titulo:String(x.titulo || 'Sin título'), autor:x.autor || '', genero:x.genero || '', edad:x.edad || '',
+      estado:(x.estado === 'apartado' || x.estado === 'comprado') ? x.estado : 'pendiente', por:x.por || '', cuando:x.cuando || '' }; });
+  });
+}
+function cargar(){
+  if (!cliente || enCurso || hayOcupados()) return;
+  enCurso = true; ultimaCarga = Date.now(); var m = marca;
+  leer().then(function(libros){ enCurso = false; if (m !== marca) { cargar(); return; } recibir(libros); },
+              function(){ enCurso = false; if (!S.sinConexion) { S.sinConexion = true; render(); } });
+}
+function mostrarVivo(){ $('vivo').className = 'vivo' + (enVivo ? ' on' : ''); $('vivoTxt').textContent = enVivo ? 'En vivo' : 'Actualiza cada pocos segundos'; }
+
+function pedir(id, acc){
+  var l = porId(id); if (!l) return;
+  if (!S.nombre) { toast('Escribe tu nombre arriba antes de marcar un libro.'); $('nombre').focus(); $('nombre').scrollIntoView({block:'center'}); return; }
+  var tipo = null, ajeno = l.estado === 'apartado' && l.por && !esMio(l.por);
+  if (acc === 'pendiente' && l.estado === 'comprado') tipo = 'desmarcar';
+  else if (acc === 'pendiente' && ajeno) tipo = 'otro-liberar';
+  else if (acc === 'comprado' && ajeno) tipo = 'otro-comprar';
+  else if (acc !== 'pendiente') { var otros = gemelos()[id] || []; if (otros.some(function(o){ return o.estado === 'comprado'; })) tipo = 'repetido'; }
+  var visto = {estado:l.estado, por:l.por};
+  if (tipo) { S.confirma = {id:id, acc:acc, tipo:tipo, visto:visto}; render(); var b = document.querySelector('[data-key="' + id + ':no"]'); if (b) b.focus(); }
+  else aplicar(l, acc, visto);
+}
+
+/* La base de datos bloquea el renglón, lo vuelve a leer y solo escribe si sigue como esta persona lo vio. */
+function aplicar(l, nuevo, visto){
+  if (S.ocupados[l.id]) return;
+  S.ocupados[l.id] = true; S.confirma = null; render();
+  var res = null;
+  cliente.rpc('plan_lector_cambiar', {p_id:l.id, p_nuevo:nuevo, p_visto_estado:visto.estado, p_visto_por:visto.por, p_nombre:S.nombre}).then(function(r){
+    if (r.error) throw r.error;
+    res = r.data || {};
+    return leer().then(function(x){ return x; }, function(){ return null; });
+  }).then(function(libros){
+    var r = res;
+    marca++; S.ocupados[l.id] = false;
+    if (libros) recibir(libros, true); else render();
+    var ahora = porId(l.id);
+    if (r.ok) toast(nuevo === 'comprado' ? '«' + l.titulo + '» quedó tachado para todo el equipo.' : nuevo === 'apartado' ? 'Apartaste «' + l.titulo + '». Táchalo cuando lo compres.' : '«' + l.titulo + '» volvió a la lista por comprar.');
+    else if (r.motivo === 'conflicto') toast(ahora && ahora.estado === 'comprado' ? 'Alguien acaba de marcar «' + l.titulo + '» como comprado. No lo compres de nuevo.' : ahora && ahora.estado === 'apartado' ? 'Alguien acaba de apartar «' + l.titulo + '». Revisa el renglón antes de comprarlo.' : '«' + l.titulo + '» acaba de cambiar. Revisa el renglón y vuelve a marcarlo.');
+    else if (r.motivo === 'nombre') toast('Escribe tu nombre arriba antes de marcar un libro.');
+    else toast('La lista cambió mientras marcabas. Revisa el renglón y vuelve a intentarlo.');
+  }, function(){
+    marca++; S.ocupados[l.id] = false; render();
+    toast('No se pudo guardar el cambio. Revisa tu conexión e inténtalo otra vez.');
+  });
+}
+
+$('lista').addEventListener('click', function(ev){
+  var b = ev.target.closest('button[data-acc]'); if (!b || b.disabled) return;
+  var id = Number(b.dataset.id), acc = b.dataset.acc;
+  if (!cliente) return;
+  if (acc === 'no') { S.confirma = null; render(); return; }
+  if (acc === 'si') { var c = S.confirma; if (!c || c.id !== id) return; var l = porId(id); if (l) aplicar(l, c.acc, c.visto); return; }
+  pedir(id, acc);
+});
+$('chips').addEventListener('click', function(ev){
+  var b = ev.target.closest('button[data-filtro]'); if (!b) return;
+  S.filtro = b.dataset.filtro; try { localStorage.setItem('pl-filtro', S.filtro); } catch(e){}
+  render();
+});
+$('buscar').addEventListener('input', function(ev){ S.q = ev.target.value; render(); });
+$('formNombre').addEventListener('submit', function(ev){
+  ev.preventDefault();
+  var v = $('nombre').value.replace(/\s+/g, ' ').trim();
+  if (v.length < 2) { toast('Escribe tu nombre para que el equipo sepa quién compró.'); $('nombre').focus(); return; }
+  S.nombre = v; try { localStorage.setItem('pl-nombre', v); } catch(e){}
+  render(); toast('Listo, ' + v + '. Ya puedes marcar libros.');
+});
+$('cambiarNombre').addEventListener('click', function(){ $('nombre').value = S.nombre; S.nombre = ''; render(); $('nombre').focus(); });
+
+function copiar(txt, msg, okTxt, manual){
+  try { navigator.clipboard.writeText(txt).then(function(){ msg.textContent = okTxt; }, manual); } catch (e) { manual(); }
+}
+$('btnCopiar').addEventListener('click', function(){
+  var pend = [], apart = [];
+  S.libros.forEach(function(l){ var linea = l.n + '. ' + l.titulo + ' — ' + l.autor; if (l.estado === 'pendiente') pend.push(linea); else if (l.estado === 'apartado') apart.push(linea); });
+  var txt = 'Plan Lector Conexiones Humanas\nPor comprar (' + pend.length + '):\n' + (pend.join('\n') || 'Nada pendiente.');
+  if (apart.length) txt += '\n\nApartados, alguien ya los va a comprar (' + apart.length + '):\n' + apart.join('\n');
+  var msg = $('copiaMsg'), area = $('copia'); area.hidden = true;
+  copiar(txt, msg, 'Lista copiada. Pégala donde la necesites.', function(){ area.value = txt; area.hidden = false; area.focus(); area.select(); msg.textContent = 'Selecciona el texto y cópialo.'; });
+});
+$('btnEnlace').addEventListener('click', function(){
+  var code = $('enlace'), msg = $('enlaceMsg');
+  copiar(code.textContent, msg, 'Enlace copiado. Pégalo en el chat del equipo.', function(){ var r = document.createRange(); r.selectNodeContents(code); var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r); msg.textContent = 'Enlace seleccionado: cópialo desde el menú.'; });
+});
+
+/* Enlace y código QR de esta misma página (negro sobre blanco para que cualquier cámara lo lea). */
+(function(){
+  if (!URL_APP) return;
+  $('enlace').textContent = URL_APP; $('movil').hidden = false;
+  try {
+    if (typeof qrcode !== 'function') return;
+    var qr = qrcode(0, 'M'); qr.addData(URL_APP); qr.make();
+    var n = qr.getModuleCount(), borde = 4, cv = $('qr'), px = Math.max(3, Math.floor(328 / (n + borde * 2)));
+    cv.width = cv.height = px * (n + borde * 2);
+    var ctx = cv.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.fillStyle = '#000000';
+    for (var r = 0; r < n; r++) for (var c = 0; c < n; c++) if (qr.isDark(r, c)) ctx.fillRect((c + borde) * px, (r + borde) * px, px, px);
+    cv.hidden = false;
+  } catch (e) {}
+})();
+
+['pointerdown','keydown','scroll'].forEach(function(t){ window.addEventListener(t, function(){ ultimoUso = Date.now(); }, {passive:true}); });
+document.addEventListener('visibilitychange', function(){ if (!document.hidden) cargar(); });
+/* Con avisos en vivo, una consulta de respaldo cada 45 s; sin ellos, cada 6 s (30 s si lleva 3 minutos sin tocarse). */
+setInterval(function(){
+  if (document.hidden || !cliente) return;
+  var espera = enVivo ? 45000 : (Date.now() - ultimoUso > 180000) ? 30000 : 6000;
+  if (Date.now() - ultimaCarga >= espera - 200) cargar();
+}, 2000);
+
+if (!configurado || !window.supabase || !window.supabase.createClient) {
+  S.fase = configurado ? 'cargando' : 'config'; S.sinConexion = configurado; render();
+  $('vivo').hidden = true;
+} else {
+  cliente = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+  render(); mostrarVivo(); cargar();
+  var pendiente = null;
+  try {
+    cliente.channel('plan-lector').on('postgres_changes', { event: '*', schema: 'public', table: TABLA }, function(){
+      clearTimeout(pendiente); pendiente = setTimeout(cargar, 150);
+    }).subscribe(function(estado){ enVivo = estado === 'SUBSCRIBED'; mostrarVivo(); if (enVivo) cargar(); });
+  } catch (e) {}
+}
+})();
+</script>
+
+</body>
+</html>
